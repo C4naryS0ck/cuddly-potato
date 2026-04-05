@@ -1,14 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import joblib
 import pandas as pd
 import re
 
 app = Flask(__name__)
-CORS(app)   # ✅ APPLY HERE
+CORS(app)
 
 # Load trained model
 model = joblib.load("model.pkl")
+
 # --- FEATURE FUNCTIONS ---
 def get_length(url):
     return len(str(url))
@@ -67,7 +68,11 @@ def predict_url(url):
     else:
         return "legitimate", round(1 - prob, 2)
 
-# --- API ---
+# --- ROUTES ---
+@app.route('/')
+def home():
+    return render_template('index.html')
+
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json()
@@ -82,4 +87,3 @@ def predict():
 
 if __name__ == "__main__":
     app.run(debug=True)
-

@@ -3,11 +3,11 @@ from flask_cors import CORS
 import joblib
 import pandas as pd
 import re
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 CORS(app)
 
-# Load trained model
 model = joblib.load("model.pkl")
 
 # --- FEATURE FUNCTIONS ---
@@ -40,6 +40,34 @@ def is_shortened(url):
     match = re.search(r'bit\.ly|goo\.gl|tinyurl|t\.co|ow\.ly|is\.gd|buff\.ly|adf\.ly', str(url))
     return 1 if match else 0
 
+# --- 4 NEW FEATURE FUNCTIONS ---
+def get_domain(url):
+    try:
+        return urlparse(str(url)).netloc
+    except:
+        return ""
+
+def domain_length(url):
+    try:
+        return len(get_domain(url))
+    except:
+        return 0
+
+def subdomain_count(url):
+    try:
+        domain = get_domain(url)
+        return domain.count('.')
+    except:
+        return 0
+
+def has_suspicious_words(url):
+    keywords = ['login', 'verify', 'bank', 'secure', 'account', 'update']
+    return 1 if any(word in url.lower() for word in keywords) else 0
+
+def suspicious_tld(url):
+    tlds = ['.xyz', '.tk', '.ml', '.ga', '.cf']
+    return 1 if any(tld in url.lower() for tld in tlds) else 0
+
 # --- PREDICTION FUNCTION ---
 def predict_url(url):
     url = url.lower().strip()
@@ -58,6 +86,10 @@ def predict_url(url):
         'has_https': check_https(url),
         'digit_count': count_digits(url),
         'is_shortened': is_shortened(url),
+        'domain_length': domain_length(url),
+        'subdomain_count': subdomain_count(url),
+        'has_suspicious_words': has_suspicious_words(url),
+        'suspicious_tld': suspicious_tld(url),
     }
 
     features_df = pd.DataFrame([features])
@@ -77,6 +109,9 @@ def home():
 def predict():
     data = request.get_json()
     url = data.get("url")
+
+    if not url:
+        return jsonify({"error": "No URL provided"}), 400
 
     prediction, confidence = predict_url(url)
 
